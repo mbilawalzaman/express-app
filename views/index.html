@@ -9,25 +9,55 @@
     h1 { color: #09566A; }
     ul { list-style-type: none; padding: 0; }
     li { background: #f2f2f2; margin: 5px 0; padding: 10px; border-radius: 5px; }
+    input, button { padding: 5px; margin: 5px 0; }
   </style>
 </head>
 <body>
   <h1>List of Users</h1>
+
   <ul id="userList"></ul>
 
+  <!-- Add User Form -->
+  <h2>Add New User</h2>
+  <input type="text" id="userName" placeholder="Enter name">
+  <button id="addUserBtn">Add User</button>
+
   <script>
-    // Fetch users from the backend
+    const userList = document.getElementById('userList');
+    const userNameInput = document.getElementById('userName');
+    const addUserBtn = document.getElementById('addUserBtn');
+
+    // Function to render a user in the list
+    function renderUser(user) {
+      const li = document.createElement('li');
+      li.textContent = `ID: ${user.id} | Name: ${user.name}`;
+      userList.appendChild(li);
+    }
+
+    // Fetch and display all users on page load
     fetch('/users')
       .then(res => res.json())
-      .then(users => {
-        const userList = document.getElementById('userList');
-        users.forEach(user => {
-          const li = document.createElement('li');
-          li.textContent = `ID: ${user.id} | Name: ${user.name}`;
-          userList.appendChild(li);
-        });
-      })
+      .then(users => users.forEach(renderUser))
       .catch(err => console.error('Error fetching users:', err));
+
+    // Add new user
+    addUserBtn.addEventListener('click', () => {
+      const name = userNameInput.value.trim();
+      if (!name) return alert('Enter a name');
+
+      // Send POST request to backend
+      fetch('/addUser', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      })
+      .then(res => res.json())
+      .then(newUser => {
+        renderUser(newUser.user); // add new user to list
+        userNameInput.value = ''; // clear input
+      })
+      .catch(err => console.error('Error adding user:', err));
+    });
   </script>
 </body>
 </html>

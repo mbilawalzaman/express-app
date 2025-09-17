@@ -1,4 +1,4 @@
-import { readFile } from 'fs/promises';
+import { readFile, writeFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -13,9 +13,23 @@ export const getUsers = (req, res) => {
   res.json(usersData);
 };
 
-export const createUser = (req, res) => {
-  const newUser = req.body;
-  res.status(201).json({ message: 'User created', user: newUser });
+export const createUser = async (req, res) => {
+  const { name } = req.body;
+
+  const newId = usersData.length ? usersData[usersData.length - 1].id + 1 : 1;
+  const newUser = { id: newId, name };
+
+  // Add to in-memory array
+  usersData.push(newUser);
+
+  try {
+    // Persist to user.json
+    await writeFile(usersPath, JSON.stringify(usersData, null, 2), 'utf-8');
+    res.status(201).json({ message: 'User created', user: newUser });
+  } catch (err) {
+    console.error('Error writing to user.json:', err);
+    res.status(500).json({ message: 'Failed to save user' });
+  }
 };
 
 export const getUserById = (req, res) => {
