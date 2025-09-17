@@ -1,25 +1,19 @@
 // route.js
-const express = require('express');
-const router = express.Router();
-const path = require('path');
-const { getUsers, createUser, getUserById } = require('../controller/userController');
+import { Router } from 'express';
+import { join } from 'path';
+import { getUsers, createUser, getUserById } from '../controller/userController.js';
+
+const router = Router();
 
 // Home route
 router.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'index.html'));
+    res.sendFile(join(process.cwd(), 'views', 'index.html'));
 });
 
-// Users route (example JSON)
+// Users routes
 router.get('/users', getUsers);
 router.post('/addUser', createUser);
-router.get('/user/:id', getUserById);
+router.get('/users/:id', getUserById);
 
 
-// POST example
-router.post('/users', (req, res) => {
-    const newUser = req.body; // Make sure you have express.json() middleware
-    // Here you would normally save to DB
-    res.status(201).json({ message: 'User created', user: newUser });
-});
-
-module.exports = router;
+export default router;

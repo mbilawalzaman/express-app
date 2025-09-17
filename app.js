@@ -1,10 +1,10 @@
-const express = require('express');
+import express, { json } from 'express';
+import routes from './routes/route.js';
 const app = express();
-const routes = require('./routes/route');
 
 
 // Middleware to parse JSON
-app.use(express.json());
+app.use(json());
 
 app.use('/', routes); 
 

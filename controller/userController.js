@@ -1,38 +1,25 @@
-// controllers/userController.js
+import { readFile } from 'fs/promises';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-// Example user data
-const users = [
-    { id: 1, name: 'Bilawal' },
-    { id: 2, name: 'Irtiza' }
-];
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-// Get all users
-const getUsers = (req, res) => {
-    res.json(users);
+// Read JSON dynamically
+const usersPath = join(__dirname, '..', 'user.json');
+const usersData = JSON.parse(await readFile(usersPath, 'utf-8'));
+
+export const getUsers = (req, res) => {
+  res.json(usersData);
 };
 
-// Create a new user
-const createUser = (req, res) => {
-    const newUser = req.body;
-    // Normally you would save to a database
-    users.push(newUser); // adding to array as example
-    res.status(201).json({ message: 'User created', user: newUser });
+export const createUser = (req, res) => {
+  const newUser = req.body;
+  res.status(201).json({ message: 'User created', user: newUser });
 };
 
-// Get user by ID
-const getUserById = (req, res) => {
-    const userId = parseInt(req.params.id); // Get ID from route parameter
-    const user = users.find(u => u.id === userId);
-
-    if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-    }
-
-    res.json(user);
-};
-
-module.exports = {
-    getUsers,
-    createUser,
-    getUserById
+export const getUserById = (req, res) => {
+  const user = usersData.find(u => u.id == req.params.id);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  res.json(user);
 };
