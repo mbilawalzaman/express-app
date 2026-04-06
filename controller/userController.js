@@ -1,39 +1,73 @@
-import { readFile, writeFile } from 'fs/promises';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { nextId, readCollection, writeCollection } from "../services/jsonStore.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const USERS_FILE = "users.json";
 
-// Read JSON dynamically
-const usersPath = join(__dirname, '..', 'user.json');
-const usersData = JSON.parse(await readFile(usersPath, 'utf-8'));
-
-export const getUsers = (req, res) => {
-  res.json(usersData);
-};
-
-export const createUser = async (req, res) => {
-  const { name } = req.body;
-
-  const newId = usersData.length ? usersData[usersData.length - 1].id + 1 : 1;
-  const newUser = { id: newId, name };
-
-  // Add to in-memory array
-  usersData.push(newUser);
-
+export const getUsers = async (req, res, next) => {
   try {
-    // Persist to user.json
-    await writeFile(usersPath, JSON.stringify(usersData, null, 2), 'utf-8');
-    res.status(201).json({ message: 'User created', user: newUser });
-  } catch (err) {
-    console.error('Error writing to user.json:', err);
-    res.status(500).json({ message: 'Failed to save user' });
+    const users = await readCollection(USERS_FILE);
+    res.json(users);
+  } catch (error) {
+    next(error);
   }
 };
 
-export const getUserById = (req, res) => {
-  const user = usersData.find(u => u.id == req.params.id);
-  if (!user) return res.status(404).json({ message: 'User not found' });
-  res.json(user);
+export const getUserById = async (req, res, next) => {
+  try {
+    const users = await readCollection(USERS_FILE);
+    const user = users.find((item) => item.id === req.resourceId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(user);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createUser = async (req, res, next) => {
+  try {
+    const users = await readCollection(USERS_FILE);
+    const user = { id: nextId(users), name: req.body.name };
+    users.push(user);
+    await writeCollection(USERS_FILE, users);
+    res.status(201).json({ message: "User created", user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateUser = async (req, res, next) => {
+  try {
+    const users = await readCollection(USERS_FILE);
+    const index = users.findIndex((item) => item.id === req.resourceId);
+
+    if (index === -1) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    users[index] = { ...users[index], name: req.body.name };
+    await writeCollection(USERS_FILE, users);
+    res.json({ message: "User updated", user: users[index] });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteUser = async (req, res, next) => {
+  try {
+    const users = await readCollection(USERS_FILE);
+    const index = users.findIndex((item) => item.id === req.resourceId);
+
+    if (index === -1) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const [deletedUser] = users.splice(index, 1);
+    await writeCollection(USERS_FILE, users);
+    res.json({ message: "User deleted", user: deletedUser });
+  } catch (error) {
+    next(error);
+  }
 };

@@ -3,61 +3,293 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User List</title>
+  <title>Users & Devices CRUD</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    h1 { color: #09566A; }
-    ul { list-style-type: none; padding: 0; }
-    li { background: #f2f2f2; margin: 5px 0; padding: 10px; border-radius: 5px; }
-    input, button { padding: 5px; margin: 5px 0; }
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --line: #d9e2ec;
+      --text: #1f2933;
+      --muted: #52606d;
+      --primary: #0a66c2;
+      --danger: #d64545;
+      --ok: #1f8a4d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      margin-bottom: 0.8rem;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.8rem;
+    }
+
+    input {
+      flex: 1;
+      padding: 0.55rem 0.7rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 0.95rem;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 0.55rem 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .btn-light {
+      background: #ecf2f8;
+      color: #243b53;
+    }
+
+    .status {
+      margin: 0 0 0.75rem;
+      color: var(--muted);
+      min-height: 1.2rem;
+      font-size: 0.9rem;
+    }
+
+    .status.ok {
+      color: var(--ok);
+    }
+
+    .status.err {
+      color: var(--danger);
+    }
+
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-height: 380px;
+      overflow: auto;
+    }
+
+    li {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.65rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .meta {
+      font-size: 0.95rem;
+    }
+
+    .meta span {
+      color: var(--muted);
+      margin-right: 0.35rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
   </style>
 </head>
 <body>
-  <h1>List of Users</h1>
+  <h1>Users and Devices CRUD Dashboard</h1>
 
-  <ul id="userList"></ul>
+  <div class="layout">
+    <section class="card">
+      <h2>Users</h2>
+      <p id="usersStatus" class="status">Ready</p>
+      <div class="form-row">
+        <input id="usersInput" type="text" placeholder="Enter user name">
+        <button id="usersCreateBtn" class="btn-primary">Create</button>
+        <button id="usersRefreshBtn" class="btn-light">Refresh</button>
+      </div>
+      <ul id="usersList"></ul>
+    </section>
 
-  <!-- Add User Form -->
-  <h2>Add New User</h2>
-  <input type="text" id="userName" placeholder="Enter name">
-  <button id="addUserBtn">Add User</button>
+    <section class="card">
+      <h2>Devices</h2>
+      <p id="devicesStatus" class="status">Ready</p>
+      <div class="form-row">
+        <input id="devicesInput" type="text" placeholder="Enter device name">
+        <button id="devicesCreateBtn" class="btn-primary">Create</button>
+        <button id="devicesRefreshBtn" class="btn-light">Refresh</button>
+      </div>
+      <ul id="devicesList"></ul>
+    </section>
+  </div>
 
   <script>
-    const userList = document.getElementById('userList');
-    const userNameInput = document.getElementById('userName');
-    const addUserBtn = document.getElementById('addUserBtn');
+    function resourceManager(resource) {
+      const input = document.getElementById(resource + "Input");
+      const list = document.getElementById(resource + "List");
+      const createBtn = document.getElementById(resource + "CreateBtn");
+      const refreshBtn = document.getElementById(resource + "RefreshBtn");
+      const status = document.getElementById(resource + "Status");
+      const baseUrl = "/api/" + resource;
 
-    // Function to render a user in the list
-    function renderUser(user) {
-      const li = document.createElement('li');
-      li.textContent = `ID: ${user.id} | Name: ${user.name}`;
-      userList.appendChild(li);
+      const setStatus = (message, type) => {
+        status.textContent = message;
+        status.className = "status " + (type || "");
+      };
+
+      const request = async (url, options) => {
+        const response = await fetch(url, options);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.message || "Request failed");
+        }
+        return data;
+      };
+
+      const render = (items) => {
+        list.innerHTML = "";
+        if (!items.length) {
+          const li = document.createElement("li");
+          li.innerHTML = '<div class="meta"><span>Empty:</span>No records yet</div>';
+          list.appendChild(li);
+          return;
+        }
+
+        items.forEach((item) => {
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <div class="meta"><span>ID ${item.id}</span>${item.name}</div>
+            <div class="actions">
+              <button class="btn-light" data-action="edit" data-id="${item.id}">Edit</button>
+              <button class="btn-danger" data-action="delete" data-id="${item.id}">Delete</button>
+            </div>
+          `;
+          list.appendChild(li);
+        });
+      };
+
+      const load = async () => {
+        try {
+          const items = await request(baseUrl);
+          render(items);
+          setStatus("Loaded " + items.length + " record(s)", "ok");
+        } catch (error) {
+          setStatus(error.message, "err");
+        }
+      };
+
+      const create = async () => {
+        const name = input.value.trim();
+        if (!name) {
+          setStatus("Name is required", "err");
+          return;
+        }
+
+        try {
+          await request(baseUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name })
+          });
+          input.value = "";
+          setStatus("Created successfully", "ok");
+          await load();
+        } catch (error) {
+          setStatus(error.message, "err");
+        }
+      };
+
+      const update = async (id) => {
+        const newName = prompt("Enter new name:");
+        if (newName === null) return;
+
+        try {
+          await request(baseUrl + "/" + id, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: newName.trim() })
+          });
+          setStatus("Updated successfully", "ok");
+          await load();
+        } catch (error) {
+          setStatus(error.message, "err");
+        }
+      };
+
+      const remove = async (id) => {
+        const confirmed = confirm("Delete this record?");
+        if (!confirmed) return;
+
+        try {
+          await request(baseUrl + "/" + id, { method: "DELETE" });
+          setStatus("Deleted successfully", "ok");
+          await load();
+        } catch (error) {
+          setStatus(error.message, "err");
+        }
+      };
+
+      createBtn.addEventListener("click", create);
+      refreshBtn.addEventListener("click", load);
+
+      list.addEventListener("click", (event) => {
+        const action = event.target.dataset.action;
+        const id = event.target.dataset.id;
+        if (!action || !id) return;
+        if (action === "edit") update(id);
+        if (action === "delete") remove(id);
+      });
+
+      load();
     }
 
-    // Fetch and display all users on page load
-    fetch('/users')
-      .then(res => res.json())
-      .then(users => users.forEach(renderUser))
-      .catch(err => console.error('Error fetching users:', err));
-
-    // Add new user
-    addUserBtn.addEventListener('click', () => {
-      const name = userNameInput.value.trim();
-      if (!name) return alert('Enter a name');
-
-      // Send POST request to backend
-      fetch('/addUser', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
-      })
-      .then(res => res.json())
-      .then(newUser => {
-        renderUser(newUser.user); // add new user to list
-        userNameInput.value = ''; // clear input
-      })
-      .catch(err => console.error('Error adding user:', err));
-    });
+    resourceManager("users");
+    resourceManager("devices");
   </script>
 </body>
 </html>

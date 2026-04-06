@@ -2,6 +2,8 @@ import express, { json } from "express";
 import routes from "./routes/route.js";
 import dotenv from "dotenv";
 import devices from "./routes/devices.js";
+import users from "./routes/userRoutes.js";
+import { errorHandler, notFoundHandler } from "./middleware/errorMiddleware.js";
 
 // Load environment variables first
 dotenv.config();
@@ -13,7 +15,11 @@ app.use(json());
 
 // Routes
 app.use("/", routes);
-app.use("/api", devices);
+app.use("/api/users", users);
+app.use("/api/devices", devices);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 // Server port from .env
 const PORT = process.env.PORT || 5000;
